@@ -1,6 +1,6 @@
 # AlphaHydrogen
 
-AlphaHydrogen is an open source OpenAI Gym environment that simulates the energy system of a residential community with distributed renewable power supply, fuel-cell vehicles, hydrogen stations, and power grid. Its objective is to advance the control of an integrated electricity-hydrogen building-vehicle-renewable energy system.
+AlphaHydrogen is an open source OpenAI Gym environment that simulates an energy network integrating buildings with distributed renewable power supply, fuel-cell vehicles, hydrogen stations, and power grid. Its objective is to advance the control of an integrated electricity-hydrogen building-vehicle-renewable energy system.
 
 <!--
 [[slides]](docs/slides.pdf)[[paper]](https://dl.acm.org/doi/10.1145/3408308.3427980)
