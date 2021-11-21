@@ -2,14 +2,14 @@
 
 AlphaHydrogen is an open source OpenAI Gym environment that simulates a regional energy network integrating buildings with distributed renewable power supply, fuel-cell vehicles, hydrogen stations, microgrid, and local power grid. Its objective is to advance the smart control of regional electricity-hydrogen energy networks supporting multiple buildings and hydrogen vehicles, for enhancing energy flexibility and CO2 emission reduction simultaneously.
 
-<!--
-[[slides]](docs/slides.pdf)[[paper]](https://dl.acm.org/doi/10.1145/3408308.3427980)
--->
-
 # Overview
 Cleaner power production, distributed renewable generation, building-vehicle integration, hydrogen (H2) storage and associated energy infrastructures are promising candidates for transformation towards a carbon-neutrality community with district energy flexibility enhancement. AlphaHydrogen allows the easy implementation of advanced control agents in a multi-agent setting to achieve customized goals: energy saving, load shifting, CO2 emission reduction, operational cost saving, and etc. 
 
-<img src="docs/figs/overview.png" width="900" />
+The aimed energy network in this version
+<img src="docs/figs/Energy_network.png" width="900" />
+
+The overview of AlphaHydrogen framework in this version
+<img src="docs/figs/Model_configuration.png" width="900" />
 
 # Code Usage
 ### Clone repository
@@ -79,11 +79,14 @@ The corresponding guidance on establishing a regional electricity-hydrogen energ
 
 ### Feedback
 
-Feel free to send any questions/feedback to: [Zhe Wang](mailto:zwang5@lbl.gov ) or [Yingdong He](mailto:heyingdong2017@berkeley.edu)
+Feel free to send any questions/feedback to: [Zhe Wang](mailto:cezhewang@ust.hk ) or [Yingdong He](mailto:heyingdong2017@berkeley.edu)
 
+### Clarification
+Zhe Wang and Yingdong He contribute the same to the development of the environment.
 
 # License
-The MIT License (MIT) Copyright (c) 2019, The University of Texas at Austin
+When using this software, please cite it:
+Yingdong He, Zhe Wang. AlphaHydrogen. https://github.com/YingdongHe/AlphaHydrogen (2021).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
