@@ -57,7 +57,7 @@ class Vehicle:
         '''Class of vehicle, equiped with a H2 tank and fuelCell
         Consume H2 for daily communiting
         Can be charged through the H2 station
-        Can be discharged to the grid through fuel cell
+        Can be discharged to the grid through fuel cell, but not considered in this version
         ------------------------------------
         Args
             -- csv_file, key parameters of the vehicle
@@ -150,8 +150,94 @@ class Vehicle:
     def getParkSchd(self, workingDay):
         self.parkSchd = self.parkSchd_wd if workingDay else self.parkSchd_nwd
         return self.parkSchd
-    
 
+class Station:
+
+    def __init__(self, csv_file, stepLenth):
+        '''Class of hydrogen station, equiped with an electrolyzer and a set of fuel cells
+        Discharging H2 for daily communiting
+        Can produce and store H2 gas through using the electricity from the microgrid
+        Stored H2 can be discharged to power the microgrid through fuel cells
+        ------------------------------------
+        Args
+            -- csv_file, key parameters of the hydrogen station
+            -- stepLenth, lenth of each time step, unit: h
+        ------------------------------------
+        State
+            -- tank_h2Vol: total onsite-produced hydrogen stored in the station tank, [kg]
+            -- tank_spareVol: rest tank space for storing onsite-produced hydrogen, [kg]
+        '''
+        self.h2Conversion = 39.694 # unit: kWh/kg
+        self.station_info = pd.read_csv(csv_file)
+        self.elyEff = float(self.station_info.loc[0,'elyEff'])  
+        self.elyCap = float(self.station_info.loc[0,'elyCap'])  # unit: kW
+        self.elyIdle = float(self.station_info.loc[0,'elyIdle'])  # unit: kW
+        self.fuelEff = float(self.station_info.loc[0,'fuelEff'])  
+        self.fuelCap = float(self.station_info.loc[0,'fuelCap'])  # unit: kW
+        self.fuelIdle = float(self.station_info.loc[0,'fuelIdle'])  # unit: kW
+        self.capacityMax = float(self.station_info.loc[0,'tankCapacity'])  # unit: kg
+        self.chargeCap = float(self.station_info.loc[0,'chargeCapacity'])  # unit: kg/s
+        self.stepLenth = stepLenth           # unit: h
+        # Initialize H2 storage in the tank
+        self.tankVol = 0
+        self.stationSOC = 0         
+
+    def h2Production(self, chargeRate):
+        '''
+        ------------------------------------
+        Args
+            -- chargeRate, possible surplus renewable for H2 production, unit: kW
+        ------------------------------------
+        Output
+            -- real charge rate, unit: kW
+            -- real H2 production, unit: kg
+        '''
+        assert chargeRate>=0, "Renewable energy must be a positive value"
+        if chargeRate >= self.elyIdle:
+            realChargeRate = min(min(chargeRate, self.elyCap), (1-min(self.stationSOC, 1)) * self.capacityMax * self.h2Conversion /self.stepLenth / self.elyEff)
+        else:
+            realChargeRate = 0
+        realH2ProductionVol = realChargeRate * self.stepLenth * self.elyEff / self.h2Conversion
+        self.tankVol += realH2ProductionVol
+        self.stationSOC = max(self.tankVol/self.capacityMax, 0)
+        return realChargeRate, realH2ProductionVol
+
+    def powerGrid(self, demandShortage):
+        '''
+        ------------------------------------
+        Args
+            -- demand shortage, required power from station to cover energy demand, unit: kW
+        ------------------------------------
+        Output
+            -- real power to microgrid, unit: kW
+            -- real H2 consumption, unit: kg
+        '''
+        assert demandShortage>=0, "Demand shortage must be a postitive value"
+        if demandShortage >= self.fuelIdle:
+            realPowerGrid = min(min(demandShortage, self.fuelCap), self.stationSOC * self.capacityMax * self.h2Conversion * self.fuelEff /self.stepLenth)
+        else:
+            realPowerGrid = 0
+        realH2Vol_powerGrid = realPowerGrid * self.stepLenth / self.fuelEff / self.h2Conversion
+        self.tankVol -= realH2Vol_powerGrid
+        self.stationSOC = max(self.tankVol/self.capacityMax, 0)
+        return realPowerGrid, realH2Vol_powerGrid
+
+    def h2toVehicle(self, vehicleChargeRate):
+        '''
+        ------------------------------------
+        Args
+            -- chargeRate, possible surplus renewable for H2 production, unit: g/s
+        ------------------------------------
+        Output
+            -- real charge rate, unit: kg
+        '''
+        # Satify the maximum charging capacity
+        self.tankVol -= vehicleChargeRate*self.stepLenth*3.6
+        self.stationSOC = max(self.tankVol/self.capacityMax, 0)
+        return vehicleChargeRate*self.stepLenth*3.6
+
+
+        
 class H2Station:
 
     def __init__(self, pipeChargingCapacity, vehicleDischargingCapacity, storageCapacity, electrolyzer, stepLenth):
@@ -326,6 +412,7 @@ class Electrolyzer():
         State:
             None
         '''
+        super().__init__()
         self.electrolyzerEff = efficiency        
         self.electrolyzerCapacity = capacity
 

@@ -1,20 +1,20 @@
 # AlphaHydrogen
 
-AlphaHydrogen is an open source OpenAI Gym environment that simulates an energy network integrating buildings with distributed renewable power supply, fuel-cell vehicles, hydrogen stations, and power grid. Its objective is to advance the control of an integrated electricity-hydrogen building-vehicle-renewable energy system.
+AlphaHydrogen is an open source OpenAI Gym environment that simulates a regional energy network integrating buildings with distributed renewable power supply, fuel-cell vehicles, hydrogen stations, microgrid, and local power grid. Its objective is to advance the smart control of regional electricity-hydrogen energy networks supporting multiple buildings and hydrogen vehicles, for enhancing energy flexibility and CO2 emission reduction simultaneously.
 
 <!--
 [[slides]](docs/slides.pdf)[[paper]](https://dl.acm.org/doi/10.1145/3408308.3427980)
 -->
 
 # Overview
-Cleaner power production, distributed renewable generation, building-vehicle integration, hydrogen (H2) storage and associated energy infrastructures are promising candidates for transformation towards a carbon-neutrality community with district energy flexibility enhancement. AlphaHydrogen allows the easy implementation of advanced controll agents in a multi-agent setting to achieve customized goals: load shifting, CO2 emission reduction, operational cost saving, and etc. 
+Cleaner power production, distributed renewable generation, building-vehicle integration, hydrogen (H2) storage and associated energy infrastructures are promising candidates for transformation towards a carbon-neutrality community with district energy flexibility enhancement. AlphaHydrogen allows the easy implementation of advanced control agents in a multi-agent setting to achieve customized goals: energy saving, load shifting, CO2 emission reduction, operational cost saving, and etc. 
 
 <img src="docs/figs/overview.png" width="900" />
 
 # Code Usage
 ### Clone repository
 ```
-git clone https://github.com/WalterZWang/AlphaHydrogen.git
+git clone https://github.com/YingdongHe/AlphaHydrogen.git
 cd AlphaHydrogen
 ```
 
@@ -43,6 +43,7 @@ conda activate alphaHydrogen
 │   │   ├──hydrogenCommunity.py
 │   │   ├──model.py
 │   │   ├──data_cleaning.ipynb
+│   │   ├──Simulation.ipynb 
 │   │   ├──test_gym.ipynb
 │   │   └──test_model.ipynb
 │   └── _init_.py
@@ -59,6 +60,8 @@ conda activate alphaHydrogen
 
 ``gym_AlphaHydrogen/envs/inputs``: Input file of the environment
 
+``gym_AlphaHydrogen/envs/Simulation.ipynb``: File to establish a regional electricity-hydrogen energy network with multiple buildings and vehicles and deploy smart control in the gym environment
+
 ``gym_AlphaHydrogen/envs/test_gym.ipynb``: File to test the gym environment
 
 ``gym_AlphaHydrogen/envs/test_model.ipynb``: File to test the model
@@ -67,7 +70,9 @@ conda activate alphaHydrogen
 
 
 ### Running
-You can test the environment using the Jupyter notebook ``gym_AlphaHydrogen/envs/test_gym.ipynb``
+You can set up your regional electricity-hydrogen energy network and run it using the Jupyter notebook ``gym_AlphaHydrogen/envs/Simulation.ipynb``
+
+The corresponding guidance on establishing a regional electricity-hydrogen energy network and customizing energy management strategies is also represented in the above-stated file.
 
 *Notes*
 - Official Documentation of [OpenAI Gym](https://gym.openai.com/).
@@ -76,31 +81,6 @@ You can test the environment using the Jupyter notebook ``gym_AlphaHydrogen/envs
 
 Feel free to send any questions/feedback to: [Zhe Wang](mailto:zwang5@lbl.gov ) or [Yingdong He](mailto:heyingdong2017@berkeley.edu)
 
-
-<!--
-### Citation
-
-If you use our code, please cite us as follows:
-
-```
-@inproceedings{Chen2020COHORT,
-author = {Chen, Bingqing and Francis, Jonathan and Pritoni, Marco and Kar, Soummya and Berg\'{e}s, Mario},
-title = {COHORT: Coordination of Heterogeneous Thermostatically Controlled Loads for Demand Flexibility},
-year = {2020},
-isbn = {9781450380614},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/3408308.3427980},
-doi = {10.1145/3408308.3427980},
-booktitle = {Proceedings of the 7th ACM International Conference on Systems for Energy-Efficient Buildings, Cities, and Transportation},
-pages = {31–40},
-numpages = {10},
-keywords = {demand response, smart thermostats, TCLs, distributed control},
-location = {Virtual Event, Japan},
-series = {BuildSys '20}
-}
-```
--->
 
 # License
 The MIT License (MIT) Copyright (c) 2019, The University of Texas at Austin

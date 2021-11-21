@@ -29,39 +29,33 @@ class hydrogenCommunity(gym.Env):
                 (vehicleParameter.csv, fuelCellEff, fuelCellCap, number of vehicles)
             example: ['inputs/vehicle_atHomeSchd.csv', ('inputs/vehicle1.csv', 100, 300, 10), 
                       ('inputs/vehicle2.csv', 100, 300, 10), ('inputs/vehicle3.csv', 100, 300, 10)]
-        - h2Station: NOT CONSIDERED IN V1.0
-            a dictionary of hydrogen station parameters
-            example: {'pipeChargingCapacity':60*1000,
-                      'vehicleDischargingCapacity':1000,
-                      'storageCapacity':1000*1000,
-                      'electrolyzerEff':0.01,
-                      'electrolyzerCapacity':10}
+        - station_info: a hydrogen station parameter file.
     ------------------------------------------------------------------------------------------------------
     States:
         - buildingLoad: total building load of the community, [kW]
-        - pvGeneration: total on-site PV generation, [kW] 
+        - pvGeneration: total on-site PV generation, [kW]
+        - tank_h2Vol: total onsite-produced hydrogen stored in the station tank, [kg]
+        - tank_spareVol: rest tank space for storing onsite-produced hydrogen, [kg] 
         - vehicle_park: binary variable, whether the vechile is parked at home or not
         - vehicle_max_dist: predicted maximum travel distance of today, dist_mu_wd+5*dist_sigma_wd [km]
         - vehicle_tank: hydorgen stored in the vehicle's tank, [g]
-        - station_tank: hydorgen stored in the station's tank, [g]
     ------------------------------------------------------------------------------------------------------
     Actions:
+        - station_control: value, meaning the charge/discharge power of the hydrogen station for balancing the microgrid energy, [kW]
+            positive means charging the hydrogen station for H2 production, negative means discharging the hydrogen station for powering microgrid. 
         - vehicle_charge: array, each element is H2 charge/discharge rate of each vehicle,
             positive means charge from H2 station, negative means discharge to grid/building, [g]
-        - h2Station_charge: NOT CONSIDERED IN V1.0
-            H2 station charge from the pipeline, [g]     
-        - h2Station_generation: NOT CONSIDERED IN V1.0
-            H2 station generation using the renewable/grid electricity, [g]
     """
 
-    def __init__(self, building_list, pv_list, vehicle_list):
+    def __init__(self, building_list, pv_list, vehicle_list, station_info):
         '''
         In this version: 
             -- The step length is fixed at 1 hour
-            -- The h2Station is assumed to have unlimited tank volumn and therefore not modelled
+            
         '''
         super().__init__()
         self.episode_idx = 0
+        self.time_step_idx = 0
 
         self.stepLenth =3600          # To be revised when the step length is not 1 hour
         self.simulationYear = 2019    # Fixed in this version
@@ -74,32 +68,41 @@ class hydrogenCommunity(gym.Env):
         self.buildingLoad = self._calculateBuildingLoad(building_list, self.stepLenth, self.simulationYear)
         self.pvGeneration = self._calculatePVGeneration(pv_list, self.stepLenth, self.simulationYear)
 
+        # Initialize the hydrogen station
+        self.station = Station(station_info, self.stepLenth/3600) 
+
         # Initialize the vehicles
         self.vehicles = []
         self.vehicle_schl_file = vehicle_list[0]
         for vehicle_tuple in vehicle_list[1:]:
-            fuelCell =FuelCell(vehicle_tuple[1], vehicle_tuple[2])
+            fuelCell = FuelCell(vehicle_tuple[1], vehicle_tuple[2])
             vehicle = Vehicle(vehicle_tuple[0], self.vehicle_schl_file, fuelCell, self.stepLenth)
             for _ in range(vehicle_tuple[3]):
                 self.vehicles.append(vehicle)
 
         # define the state and action space
         vehicle_n = len(self.vehicles)           # Only control the vehicles
-        self.action_names = ['vehicle_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)]
-        self.actions_low = np.ones(vehicle_n)*-100    # Maximum discharging rate -100g/s
-        self.actions_high = np.ones(vehicle_n)*100    # Maximum charging rate 100g/s
+        self.action_names = ['station_tank'] + \
+            ['vehicle_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)]
+        self.actions_low = np.array([-10000] + [-100 for _ in range(vehicle_n)])    # Maximum discharging rate -100g/s
+        self.actions_high = np.array([10000] + [100 for _ in range(vehicle_n)])    # Maximum charging rate 100g/s
         self.action_space = spaces.Box(low=self.actions_low,
                                        high=self.actions_high,
                                        dtype=np.float32)  
 
-        self.obs_names = ['buildingLoad', 'pvGeneration'] + \
+        self.obs_names = ['buildingLoad', 'pvGeneration', 'tank_h2Vol','tank_spareVol'] + \
             ['vehicle_park_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)] + \
             ['vehicle_max_dist_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)] + \
-            ['vehicle_tank_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)]
-        self.obs_low  = np.array([0,  0] + [0 for _ in range(vehicle_n)] + \
-            [0 for _ in range(vehicle_n)] + [0 for _ in range(vehicle_n)])
-        self.obs_high = np.array([10000, 10000] + [1 for _ in range(vehicle_n)] + \
-            [1000 for _ in range(vehicle_n)] + [10000 for _ in range(vehicle_n)])
+            ['vehicle_tank_{}'.format(vehicle_i) for vehicle_i in range(vehicle_n)]# + \
+            #['h2Production', 'h2forGrid', 'h2forVehicle']
+
+        self.obs_low  = np.array([0,  0,  0, 0] + [0 for _ in range(vehicle_n)] + \
+            [0 for _ in range(vehicle_n)] + [0 for _ in range(vehicle_n)] + \
+            [0,  0,  0])
+            
+        self.obs_high = np.array([10000, 10000, 10000, 10000] + [1 for _ in range(vehicle_n)] + \
+            [1000 for _ in range(vehicle_n)] + [10000 for _ in range(vehicle_n)] + \
+            [10000, 10000, 10000])
         self.observation_space = spaces.Box(low=self.obs_low, 
                                             high=self.obs_high, 
                                             dtype=np.float32)
@@ -108,52 +111,82 @@ class hydrogenCommunity(gym.Env):
         self.episode_idx += 1
         self.time_step_idx = 0
         load = self._getLoad(self.time_step_idx)
+        stationTank = [0]
+        stationTankVol = [0]
+        stationTankSpare = [0]
         vehicles_park = []
         vehicles_max_dist = []
         vehicles_tank = []
+        
         for vehicle in self.vehicles:
             vehicle_park, vehicle_max_dist, _ = self._getVihicleStateStatic(vehicle)
             vehicles_park.append(vehicle_park)
             vehicles_max_dist.append(vehicle_max_dist)           
             vehicles_tank.append(vehicle.tankVol)   # Half the tank at the begining
-        obs = load + vehicles_park + vehicles_max_dist + vehicles_tank
+        obs = load + stationTankVol + stationTankSpare + vehicles_park + vehicles_max_dist + vehicles_tank# + h2Production + h2forGrid + h2forVehicle
 
         return obs
 
     def step(self, actions):
         load = self._getLoad(self.time_step_idx)
+        stationTankVol = [max(self.station.tankVol, 0)]
+        stationTankSpare = [self.station.capacityMax - max(self.station.tankVol, 0)]
+
         vehicles_park = []
         vehicles_max_dist = []
         vehicles_tank = []
-        totalGridLoad = load[0] - load[1]   # building load minus the pv generation
         totalH2Charging = 0
 
-        for action, vehicle in zip(actions, self.vehicles):
+        # Charge the tank of the H2 station
+        if actions[0] >= 0: 
+            power_H2Production, h2Production = self.station.h2Production(actions[0])
+            powertoGrid = 0
+            h2forGrid = 0
+        elif actions[0] < 0: 
+            powertoGrid, h2forGrid = self.station.powerGrid(-actions[0])
+            power_H2Production = 0
+            h2Production = 0
+        
+        for action, vehicle in zip(actions[1:], self.vehicles):
             vehicle_park, vehicle_max_dist, cruiseBackHour = self._getVihicleStateStatic(vehicle)
             if action > 0:   # Charge the vehicle tank from the H2 station
-                realH2ChargeRate = vehicle.h2FromStation(action)
-                totalH2Charging += realH2ChargeRate
+                if totalH2Charging < (self.station.chargeCap*1000):
+                    realH2ChargeRate = vehicle.h2FromStation(action)
+                    totalH2Charging += realH2ChargeRate
+                else:
+                    realH2ChargeRate = vehicle.h2FromStation(0)
             elif action < 0: # discharge the grid
                 realDischargePower = vehicle.eleToGrid(-action)
                 totalGridLoad -= realDischargePower
-            # Vehicle's gas tank is reduced at the hour vehicle is back 
+            # Vehicle's gas tank is reduced at the hour when vehicle is back 
             if cruiseBackHour:
                 workingDay = self.timeIndex[self.time_step_idx].weekday()
                 vehicle.cruise(workingDay)
-
             vehicles_park.append(vehicle_park)
             vehicles_max_dist.append(vehicle_max_dist)
             vehicles_tank.append(vehicle.tankVol)
         
-        obs = load + vehicles_park + vehicles_max_dist + vehicles_tank
+        h2forVehicle = self.station.h2toVehicle(totalH2Charging)  
+        h2Change = h2Production - h2forGrid - h2forVehicle
+        h2netuse = -self.station.tankVol
 
-        reward = (totalGridLoad, totalH2Charging)
-        done = self.time_step_idx == len(self.timeIndex)-1
+        totalGridLoad = load[0] - 0.95*load[1] + power_H2Production - powertoGrid
         
-        self.time_step_idx += 1
-        comments = None
+        obs = load + stationTankVol + stationTankSpare + vehicles_park + vehicles_max_dist + vehicles_tank
 
+        reward = (totalGridLoad, h2Change)
+        done = self.time_step_idx == len(self.timeIndex)-1
+        comments = (h2netuse, h2Production, h2forGrid, h2forVehicle)
+
+        self.time_step_idx += 1
+        if done:
+            load = self._getLoad(self.time_step_idx-1)
+        else:
+            load = self._getLoad(self.time_step_idx)
+        obs = load + stationTankVol + stationTankSpare + vehicles_park + vehicles_max_dist + vehicles_tank
         return obs, reward, done, comments
+
+    
 
     def _calculateBuildingLoad(self, building_list, stepLenth, simulationYear):
         '''Calculate the total building load from the building list
