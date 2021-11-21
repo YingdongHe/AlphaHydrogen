@@ -5,10 +5,11 @@ AlphaHydrogen is an open source OpenAI Gym environment that simulates a regional
 # Overview
 Cleaner power production, distributed renewable generation, building-vehicle integration, hydrogen (H2) storage and associated energy infrastructures are promising candidates for transformation towards a carbon-neutrality community with district energy flexibility enhancement. AlphaHydrogen allows the easy implementation of advanced control agents in a multi-agent setting to achieve customized goals: energy saving, load shifting, CO2 emission reduction, operational cost saving, and etc. 
 
-The aimed energy network in this version
+The aimed energy network in this version:
 <img src="docs/figs/Energy_network.png" width="900" />
 
-The overview of AlphaHydrogen framework in this version
+
+The overview of AlphaHydrogen framework in this version:
 <img src="docs/figs/Model_configuration.png" width="900" />
 
 # Code Usage
