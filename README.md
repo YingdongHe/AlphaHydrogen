@@ -24,7 +24,7 @@ Set up the virtual environment with your preferred environment/package manager.
 
 The instruction here is based on **conda**. ([Install conda](https://docs.anaconda.com/anaconda/install/))
 ```
-conda create --name alphaHydrogen python=3.8 -c conda-forge -f requirements.txt
+conda create --name alphaHydrogen python=3.8 -c conda-forge --file requirements.txt
 conda activate alphaHydrogen
 ```
 
